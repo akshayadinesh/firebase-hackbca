@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>Branch - Be Happy</title>
+	</head>
+  
+  <body>		
+		<br>Title<br>
+		<input id="titleInput" type="text">
+		<br>Message Body<br>
+		<input id="bodyInput" type="text">
+		<button type="submit" onclick="buttonClicked()">Submit</button>
+		
+		<div id="recentPosts"></div>
+		
+		
+<script src="https://www.gstatic.com/firebasejs/3.7.3/firebase.js"></script>
+<script>
+	
+	function httpGetAsync(theUrl, callback){
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() { 
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+            callback(xmlHttp.responseText);
+    }
+    xmlHttp.open("GET", theUrl, true); // true for asynchronous 
+    xmlHttp.send(null);
+}
+	var text = "nope";
+
+  // Initialize Firebase
+  var config = {
+    apiKey: "AIzaSyB20lzTP0XdsljXRfxQfiAtnbCcvd04vSM",
+    authDomain: "hackbca-app.firebaseapp.com",
+    databaseURL: "https://hackbca-app.firebaseio.com",
+    storageBucket: "hackbca-app.appspot.com",
+    messagingSenderId: "744594729315"
+  };
+  firebase.initializeApp(config);
+	
+	function buttonClicked() {
+		var titleText = document.getElementById("titleInput").value;
+		var d = new Date();
+		var dateText = d.toDateString() + " " + d.toTimeString();
+		var bodyText = document.getElementById("bodyInput").value;
+		
+		text = bodyText;
+		
+		httpGetAsync('https://watson-api-explorer.mybluemix.net/tone-analyzer/api/v3/tone?version=2016-05-19&text='+text+'&sentences=false', function(data) {
+		
+		var jsonObject = JSON.parse(data);
+		var anger = jsonObject.document_tone.tone_categories[0].tones[0].score;
+		var disgust = jsonObject.document_tone.tone_categories[0].tones[1].score;
+		var fear = jsonObject.document_tone.tone_categories[0].tones[2].score;
+		var joy = jsonObject.document_tone.tone_categories[0].tones[3].score;
+		var sadness = jsonObject.document_tone.tone_categories[0].tones[4].score;
+
+		//0.000762
+			
+			writeNewPost(bodyText, titleText, dateText, anger, disgust, fear, joy, sadness);
+	});
+		
+		
+	}
+	
+function writeNewPost(body, title, date, anger, disgust, fear, joy, sadness) {
+  // A post entry.
+  var postData = {
+    body: body,
+    title: title,
+		date: date,
+		anger: anger,
+		disgust: disgust,
+		fear: fear,
+		joy: joy,
+		sadness: sadness
+  };
+		
+	
+		
+  var newPostKey = firebase.database().ref().child('posts').push().key;
+		
+	var updates = {};
+  updates['/posts/' + newPostKey] = postData;
+
+  return firebase.database().ref().update(updates);
+		
+	}
+	
+	var recentPostsSection = document.getElementById("recentPosts")
+	
+	function startDatabaseQueries() {
+
+  var recentPostsRef = firebase.database().ref('posts');
+
+  var fetchPosts = function(postsRef, sectionElement) {
+    postsRef.on('child_added', function(data) {
+      recentPostsSection.insertBefore(
+          createPostElement(data.key, data.val().title, data.val().body, data.val().date, data.val().anger, data.val().disgust, data.val().fear, data.val().joy, data.val().sadness),
+          recentPostsSection.firstChild);
+    });
+//    postsRef.on('child_changed', function(data) {	
+//		var containerElement = sectionElement.getElementsByClassName('posts-container')[0];
+//		var postElement = containerElement.getElementsByClassName('post-' + data.key)[0];
+//		postElement.getElementsByClassName('mdl-card__title-text')[0].innerText = data.val().title;
+//		postElement.getElementsByClassName('username')[0].innerText = data.val().author;
+//		postElement.getElementsByClassName('text')[0].innerText = data.val().body;
+//		postElement.getElementsByClassName('star-count')[0].innerText = data.val().starCount;
+//    });
+//    postsRef.on('child_removed', function(data) {
+//		var containerElement = sectionElement.getElementsByClassName('posts-container')[0];
+//		var post = containerElement.getElementsByClassName('post-' + data.key)[0];
+//	    post.parentElement.removeChild(post);
+//    });
+  };
+		
+		  fetchPosts(recentPostsRef, recentPostsSection);
+
+	}
+	
+	function createPostElement(key, title, body, date, anger, disgust, fear, joy, sadness) {
+		var html = '<h1>'+title+'</h1>'
+		+'<h2 class="dateh2"></h2>'
+		+'<p class="bodyp"></p>'
+		+'<p class="anger"></p>'
+		+'<p class="disgust"></p>'
+		+'<p class="fear"></p>'
+		+'<p class="joy"></p>'
+		+'<p class="sadness"></p>';
+		
+		
+		var div = document.createElement('div');
+  	div.innerHTML = html;
+		
+		
+		div.getElementsByClassName('anger')[0].innerText = anger;
+		div.getElementsByClassName('disgust')[0].innerText = disgust;
+		div.getElementsByClassName('fear')[0].innerText = fear;
+		div.getElementsByClassName('joy')[0].innerText = joy;
+		div.getElementsByClassName('sadness')[0].innerText = sadness;
+		div.getElementsByClassName('dateh2')[0].innerText = date;
+		div.getElementsByClassName('bodyp')[0].innerText = body;
+
+		var postElement = div;
+		console.log(postElement);
+		return postElement;
+	}
+startDatabaseQueries();
+	
+</script>
+	</body>
+	
+
+</html>
+
+
+
+
+
